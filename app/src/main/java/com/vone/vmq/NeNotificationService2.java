@@ -15,6 +15,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.vone.vmq.util.SSLSocketClient;
+
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -81,8 +83,17 @@ public class NeNotificationService2  extends NotificationListenerService {
                     String sign = md5(t+key);
 
 
-                    OkHttpClient okHttpClient = new OkHttpClient();
-                    Request request = new Request.Builder().url("http://"+host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
+                    OkHttpClient okHttpClient=null;
+                    if(host.contains("https")){
+                        okHttpClient = new OkHttpClient()
+                                .newBuilder()
+                                .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
+                                .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
+                                .build();
+                    }else{
+                        okHttpClient = new OkHttpClient();
+                    }
+                    Request request = new Request.Builder().url(host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
                     Call call = okHttpClient.newCall(request);
                     call.enqueue(new Callback() {
                         @Override
@@ -231,10 +242,19 @@ public class NeNotificationService2  extends NotificationListenerService {
 
         String t = String.valueOf(new Date().getTime());
         String sign = md5(type+""+ price + t + key);
-        String url = "http://"+host+"/appPush?t="+t+"&type="+type+"&price="+price+"&sign="+sign;
+        String url = host+"/appPush?t="+t+"&type="+type+"&price="+price+"&sign="+sign;
         Log.d(TAG, "onResponse  push: 开始:"+url);
 
-        OkHttpClient okHttpClient = new OkHttpClient();
+        OkHttpClient okHttpClient=null;
+        if(host.contains("https")){
+            okHttpClient = new OkHttpClient()
+                    .newBuilder()
+                    .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
+                    .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
+                    .build();
+        }else{
+            okHttpClient = new OkHttpClient();
+        }
         Request request = new Request.Builder().url(url).method("GET",null).build();
         Call call = okHttpClient.newCall(request);
         call.enqueue(new Callback() {

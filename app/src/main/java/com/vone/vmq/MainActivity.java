@@ -13,19 +13,16 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,12 +30,14 @@ import android.widget.Toast;
 import com.vone.qrcode.R;
 import com.vone.vmq.util.Constant;
 import com.google.zxing.activity.CaptureActivity;
+import com.vone.vmq.util.SSLSocketClient;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
-import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -96,8 +95,6 @@ public class MainActivity extends AppCompatActivity{
 
 
         Toast.makeText(MainActivity.this, "v免签开源免费免签系统 v1.8.1", Toast.LENGTH_SHORT).show();
-
-
     }
 
 
@@ -129,54 +126,70 @@ public class MainActivity extends AppCompatActivity{
         builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                String scanResult = inputServer.getText().toString();
-
-                String[] tmp = scanResult.split("/");
-                if (tmp.length!=2){
-                    Toast.makeText(MainActivity.this, "数据错误，请您输入网站上显示的配置数据!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                String t = String.valueOf(new Date().getTime());
-                String sign = md5(t+tmp[1]);
-
-
-                OkHttpClient okHttpClient = new OkHttpClient();
-                Request request = new Request.Builder().url("http://"+tmp[0]+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
-                Call call = okHttpClient.newCall(request);
-                call.enqueue(new Callback() {
-                    @Override
-                    public void onFailure(Call call, IOException e) {
-
-                    }
-                    @Override
-                    public void onResponse(Call call, Response response) throws IOException {
-                        Log.d(TAG, "onResponse: "+response.body().string());
-                        isOk = true;
-
-                    }
-                });
-                if (tmp[0].indexOf("localhost")>=0){
-                    Toast.makeText(MainActivity.this, "配置信息错误，本机调试请访问 本机局域网IP:8080(如192.168.1.101:8080) 获取配置信息进行配置!", Toast.LENGTH_LONG).show();
-
-                    return;
-                }
-                //将扫描出的信息显示出来
-                txthost.setText(" 通知地址："+tmp[0]);
-                txtkey.setText(" 通讯密钥："+tmp[1]);
-                host = tmp[0];
-                key = tmp[1];
-
-                SharedPreferences.Editor editor = getSharedPreferences("vone", MODE_PRIVATE).edit();
-                editor.putString("host", host);
-                editor.putString("key", key);
-                editor.commit();
-
+                checkAndSaveConfig(inputServer.getText().toString());
             }
         });
         builder.show();
-
     }
+
+    private void checkAndSaveConfig(String text){
+        String h="",k="";
+        try {
+            URL url=new URL(text);
+            h=url.getProtocol()+"://"+url.getAuthority();
+            k=url.getPath().substring(1);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Toast.makeText(MainActivity.this, "数据错误，请您输入网站上显示的配置数据!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String t = String.valueOf(new Date().getTime());
+        String sign = md5(t+k);
+
+        OkHttpClient okHttpClient=null;
+        if(h.contains("https")){
+            okHttpClient = new OkHttpClient()
+                    .newBuilder()
+                    .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
+                    .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
+                    .build();
+        }else{
+            okHttpClient = new OkHttpClient();
+        }
+        Request request = new Request.Builder().url(h+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
+        Call call = okHttpClient.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+
+            }
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                Log.d(TAG, "onResponse: "+response.body().string());
+                isOk = true;
+            }
+        });
+
+
+
+        if (h.indexOf("localhost")>=0){
+            Toast.makeText(MainActivity.this, "配置信息错误，本机调试请访问 本机局域网IP:8080(如192.168.1.101:8080) 获取配置信息进行配置!", Toast.LENGTH_LONG).show();
+
+            return;
+        }
+        //将扫描出的信息显示出来
+        txthost.setText(" 通知地址："+h);
+        txtkey.setText(" 通讯密钥："+k);
+        host=h;
+        key=k;
+
+        SharedPreferences.Editor editor = getSharedPreferences("vone", MODE_PRIVATE).edit();
+        editor.putString("host", host);
+        editor.putString("key", key);
+        editor.commit();
+    }
+
     //检测心跳
     public void doStart(View view) {
         if (isOk==false){
@@ -188,8 +201,17 @@ public class MainActivity extends AppCompatActivity{
         String t = String.valueOf(new Date().getTime());
         String sign = md5(t+key);
 
-        OkHttpClient okHttpClient = new OkHttpClient();
-        Request request = new Request.Builder().url("http://"+host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
+        OkHttpClient okHttpClient=null;
+        if(host.contains("https")){
+            okHttpClient = new OkHttpClient()
+                    .newBuilder()
+                    .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
+                    .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
+                    .build();
+        }else{
+            okHttpClient = new OkHttpClient();
+        }
+        Request request = new Request.Builder().url(host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
         Call call = okHttpClient.newCall(request);
         call.enqueue(new Callback() {
             @Override
@@ -338,46 +360,11 @@ public class MainActivity extends AppCompatActivity{
         if (requestCode == Constant.REQ_QR_CODE && resultCode == RESULT_OK) {
             Bundle bundle = data.getExtras();
             String scanResult = bundle.getString(Constant.INTENT_EXTRA_KEY_QR_SCAN);
-
-            String[] tmp = scanResult.split("/");
-            if (tmp.length!=2){
-                Toast.makeText(MainActivity.this, "二维码错误，请您扫描网站上显示的二维码!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String t = String.valueOf(new Date().getTime());
-            String sign = md5(t+tmp[1]);
-
-
-            OkHttpClient okHttpClient = new OkHttpClient();
-            Request request = new Request.Builder().url("http://"+tmp[0]+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
-            Call call = okHttpClient.newCall(request);
-            call.enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-
-                }
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    Log.d(TAG, "onResponse: "+response.body().string());
-                    isOk = true;
-
-                }
-            });
-
-            //将扫描出的信息显示出来
-            txthost.setText(" 通知地址："+tmp[0]);
-            txtkey.setText(" 通讯密钥："+tmp[1]);
-            host = tmp[0];
-            key = tmp[1];
-
-            SharedPreferences.Editor editor = getSharedPreferences("vone", MODE_PRIVATE).edit();
-            editor.putString("host", host);
-            editor.putString("key", key);
-            editor.commit();
-
+            checkAndSaveConfig(scanResult);
         }
     }
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
