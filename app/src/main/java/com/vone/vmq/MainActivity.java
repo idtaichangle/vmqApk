@@ -344,4 +344,48 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+    public void mockAlipay(View v){
+        doMock("支付宝到账");
+    }
+
+    public void mockWeixinPay(View v){
+        doMock("微信到账");
+    }
+
+    private void doMock(String title){
+        Notification mNotification;
+        NotificationManager mNotificationManager;
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        String content="某某通过扫码向你付款"+((EditText)findViewById(R.id.editText1)).getText()+"元";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel("1",
+                    "Channel1", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.enableLights(true);
+            channel.setLightColor(Color.GREEN);
+            channel.setShowBadge(true);
+            mNotificationManager.createNotificationChannel(channel);
+
+            Notification.Builder builder = new Notification.Builder(this,"1");
+
+            mNotification = builder
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setTicker(content)
+                    .setContentTitle(title)
+                    .setContentText(content)
+                    .build();
+        }else{
+            mNotification = new Notification.Builder(MainActivity.this)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setTicker(content)
+                    .setContentTitle(title)
+                    .setContentText(content)
+                    .build();
+        }
+
+        //Toast.makeText(MainActivity.this, "已推送信息，如果权限，那么将会有下一条提示！", Toast.LENGTH_SHORT).show();
+
+        mNotificationManager.notify(id++, mNotification);
+    }
 }

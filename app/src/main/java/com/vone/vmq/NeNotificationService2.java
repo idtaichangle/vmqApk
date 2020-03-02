@@ -197,6 +197,18 @@ public class NeNotificationService2  extends NotificationListenerService {
                                 Toast.makeText(getApplicationContext() ,"监听正常，如无法正常回调请联系作者反馈！",Toast.LENGTH_SHORT).show();
                             }
                         });
+                    }else if(title.contains("支付宝")){
+                        String money = getMoney(content);
+                        if (money!=null){
+                            Log.d(TAG, "onAccessibilityEvent: 匹配成功： 支付宝 到账 " + money);
+                            appPush(2, Double.valueOf(money));
+                        }
+                    }else if(title.contains("微信")){
+                        String money = getMoney(content);
+                        if (money!=null){
+                            Log.d(TAG, "onAccessibilityEvent: 匹配成功： 微信到账 "+ money);
+                            appPush(1,Double.valueOf(money));
+                        }
                     }
                 }
 

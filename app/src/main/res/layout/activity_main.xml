@@ -58,5 +58,23 @@
         android:layout_gravity="center_horizontal"
         android:onClick="checkPush"
         android:text="检测监听" />
-
+    <Button
+        android:id="@+id/btn_mock_alipay"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:onClick="mockAlipay"
+        android:text="模拟支付宝到账通知" />
+    <Button
+        android:id="@+id/btn_mock_weixin"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:onClick="mockWeixinPay"
+        android:text="模拟微信到账通知" />
+    <EditText
+        android:id="@+id/editText1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="1.0"/>
 </LinearLayout>
