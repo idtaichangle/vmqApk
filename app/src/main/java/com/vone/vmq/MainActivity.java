@@ -30,6 +30,7 @@ import android.widget.Toast;
 import com.vone.qrcode.R;
 import com.vone.vmq.util.Constant;
 import com.google.zxing.activity.CaptureActivity;
+import com.vone.vmq.util.EncryptUtil;
 import com.vone.vmq.util.SSLSocketClient;
 
 import java.io.IOException;
@@ -65,12 +66,8 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
         txthost = (TextView) findViewById(R.id.txt_host);
         txtkey = (TextView) findViewById(R.id.txt_key);
-
-
 
         //检测通知使用权是否启用
         if (!isNotificationListenersEnabled()) {
@@ -79,8 +76,6 @@ public class MainActivity extends AppCompatActivity{
         }
         //重启监听服务
         toggleNotificationListenerService(this);
-
-
 
         //读入保存的配置数据并显示
         SharedPreferences read = getSharedPreferences("vone", MODE_PRIVATE);
@@ -92,12 +87,8 @@ public class MainActivity extends AppCompatActivity{
             txtkey.setText(" 通讯密钥："+key);
             isOk = true;
         }
-
-
         Toast.makeText(MainActivity.this, "v免签开源免费免签系统 v1.8.1", Toast.LENGTH_SHORT).show();
     }
-
-
 
     //扫码配置
     public void startQrCode(View v) {
@@ -117,6 +108,7 @@ public class MainActivity extends AppCompatActivity{
         Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
         startActivityForResult(intent, Constant.REQ_QR_CODE);
     }
+
     //手动配置
     public void doInput(View v){
         final EditText inputServer = new EditText(this);
@@ -145,17 +137,15 @@ public class MainActivity extends AppCompatActivity{
         }
 
         String t = String.valueOf(new Date().getTime());
-        String sign = md5(t+k);
+        String sign = EncryptUtil.md5(t+k);
 
-        OkHttpClient okHttpClient=null;
-        if(h.contains("https")){
-            okHttpClient = new OkHttpClient()
+        OkHttpClient okHttpClient = new OkHttpClient();
+        if(host.contains("https")){
+            okHttpClient = okHttpClient
                     .newBuilder()
                     .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
                     .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
                     .build();
-        }else{
-            okHttpClient = new OkHttpClient();
         }
         Request request = new Request.Builder().url(h+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
         Call call = okHttpClient.newCall(request);
@@ -170,8 +160,6 @@ public class MainActivity extends AppCompatActivity{
                 isOk = true;
             }
         });
-
-
 
         if (h.indexOf("localhost")>=0){
             Toast.makeText(MainActivity.this, "配置信息错误，本机调试请访问 本机局域网IP:8080(如192.168.1.101:8080) 获取配置信息进行配置!", Toast.LENGTH_LONG).show();
@@ -197,19 +185,16 @@ public class MainActivity extends AppCompatActivity{
             return;
         }
 
-
         String t = String.valueOf(new Date().getTime());
-        String sign = md5(t+key);
+        String sign = EncryptUtil.md5(t+key);
 
-        OkHttpClient okHttpClient=null;
+        OkHttpClient okHttpClient = new OkHttpClient();
         if(host.contains("https")){
-            okHttpClient = new OkHttpClient()
+            okHttpClient = okHttpClient
                     .newBuilder()
                     .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
                     .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
                     .build();
-        }else{
-            okHttpClient = new OkHttpClient();
         }
         Request request = new Request.Builder().url(host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
         Call call = okHttpClient.newCall(request);
@@ -263,15 +248,8 @@ public class MainActivity extends AppCompatActivity{
 
         //Toast.makeText(MainActivity.this, "已推送信息，如果权限，那么将会有下一条提示！", Toast.LENGTH_SHORT).show();
 
-
-
         mNotificationManager.notify(id++, mNotification);
     }
-
-
-
-
-
 
 
     //各种权限的判断
@@ -285,6 +263,7 @@ public class MainActivity extends AppCompatActivity{
 
         Toast.makeText(MainActivity.this, "监听服务启动中...", Toast.LENGTH_SHORT).show();
     }
+
     public boolean isNotificationListenersEnabled() {
         String pkgName = getPackageName();
         final String flat = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
@@ -301,6 +280,7 @@ public class MainActivity extends AppCompatActivity{
         }
         return false;
     }
+
     protected boolean gotoNotificationAccessSetting() {
         try {
             Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
@@ -326,33 +306,6 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-
-
-    public static String md5(String string) {
-        if (TextUtils.isEmpty(string)) {
-            return "";
-        }
-        MessageDigest md5 = null;
-        try {
-            md5 = MessageDigest.getInstance("MD5");
-            byte[] bytes = md5.digest(string.getBytes());
-            String result = "";
-            for (byte b : bytes) {
-                String temp = Integer.toHexString(b & 0xff);
-                if (temp.length() == 1) {
-                    temp = "0" + temp;
-                }
-                result += temp;
-            }
-            return result;
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return "";
-    }
-
-
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -363,7 +316,6 @@ public class MainActivity extends AppCompatActivity{
             checkAndSaveConfig(scanResult);
         }
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -391,7 +343,5 @@ public class MainActivity extends AppCompatActivity{
                 break;
         }
     }
-
-
 
 }

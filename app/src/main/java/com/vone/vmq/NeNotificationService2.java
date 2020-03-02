@@ -15,6 +15,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.vone.vmq.util.EncryptUtil;
 import com.vone.vmq.util.SSLSocketClient;
 
 import java.io.IOException;
@@ -77,41 +78,41 @@ public class NeNotificationService2  extends NotificationListenerService {
                     SharedPreferences read = getSharedPreferences("vone", MODE_PRIVATE);
                     host = read.getString("host", "");
                     key = read.getString("key", "");
+                    if(!"".equals(host)){
+                        //这里写入子线程需要做的工作
+                        String t = String.valueOf(new Date().getTime());
+                        String sign = EncryptUtil.md5(t+key);
 
-                    //这里写入子线程需要做的工作
-                    String t = String.valueOf(new Date().getTime());
-                    String sign = md5(t+key);
 
-
-                    OkHttpClient okHttpClient=null;
-                    if(host.contains("https")){
-                        okHttpClient = new OkHttpClient()
-                                .newBuilder()
-                                .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
-                                .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
-                                .build();
-                    }else{
-                        okHttpClient = new OkHttpClient();
+                        OkHttpClient okHttpClient = new OkHttpClient();
+                        if(host.contains("https")){
+                            okHttpClient = okHttpClient
+                                    .newBuilder()
+                                    .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
+                                    .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
+                                    .build();
+                        }
+                        Request request = new Request.Builder().url(host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
+                        Call call = okHttpClient.newCall(request);
+                        call.enqueue(new Callback() {
+                            @Override
+                            public void onFailure(Call call, IOException e) {
+                                final String error = e.getMessage();
+                                Handler handlerThree=new Handler(Looper.getMainLooper());
+                                handlerThree.post(new Runnable(){
+                                    public void run(){
+                                        Toast.makeText(getApplicationContext() ,"心跳状态错误，请检查配置是否正确!"+error,Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                            }
+                            //请求成功执行的方法
+                            @Override
+                            public void onResponse(Call call, Response response) throws IOException {
+                                Log.d(TAG, "onResponse heard: "+response.body().string());
+                            }
+                        });
                     }
-                    Request request = new Request.Builder().url(host+"/appHeart?t="+t+"&sign="+sign).method("GET",null).build();
-                    Call call = okHttpClient.newCall(request);
-                    call.enqueue(new Callback() {
-                        @Override
-                        public void onFailure(Call call, IOException e) {
-                            final String error = e.getMessage();
-                            Handler handlerThree=new Handler(Looper.getMainLooper());
-                            handlerThree.post(new Runnable(){
-                                public void run(){
-                                    Toast.makeText(getApplicationContext() ,"心跳状态错误，请检查配置是否正确!"+error,Toast.LENGTH_LONG).show();
-                                }
-                            });
-                        }
-                        //请求成功执行的方法
-                        @Override
-                        public void onResponse(Call call, Response response) throws IOException {
-                            Log.d(TAG, "onResponse heard: "+response.body().string());
-                        }
-                    });
+
                     try {
                         Thread.sleep(30*1000);
                     } catch (InterruptedException e) {
@@ -124,9 +125,6 @@ public class NeNotificationService2  extends NotificationListenerService {
 
         newThread.start(); //启动线程
     }
-
-
-
 
     //当收到一条消息的时候回调，sbn是收到的消息
     @Override
@@ -229,10 +227,6 @@ public class NeNotificationService2  extends NotificationListenerService {
 
     }
 
-
-
-
-
     public void appPush(int type,double price){
         SharedPreferences read = getSharedPreferences("vone", MODE_PRIVATE);
         host = read.getString("host", "");
@@ -241,19 +235,17 @@ public class NeNotificationService2  extends NotificationListenerService {
         Log.d(TAG, "onResponse  push: 开始:"+type+"  "+price);
 
         String t = String.valueOf(new Date().getTime());
-        String sign = md5(type+""+ price + t + key);
+        String sign = EncryptUtil.md5(type+""+ price + t + key);
         String url = host+"/appPush?t="+t+"&type="+type+"&price="+price+"&sign="+sign;
         Log.d(TAG, "onResponse  push: 开始:"+url);
 
-        OkHttpClient okHttpClient=null;
+        OkHttpClient okHttpClient = new OkHttpClient();
         if(host.contains("https")){
             okHttpClient = new OkHttpClient()
                     .newBuilder()
                     .sslSocketFactory(SSLSocketClient.getSSLSocketFactory())//配置
                     .hostnameVerifier(SSLSocketClient.getHostnameVerifier())//配置
                     .build();
-        }else{
-            okHttpClient = new OkHttpClient();
         }
         Request request = new Request.Builder().url(url).method("GET",null).build();
         Call call = okHttpClient.newCall(request);
@@ -285,28 +277,6 @@ public class NeNotificationService2  extends NotificationListenerService {
             return ss.get(ss.size()-1);
         }
 
-    }
-    public static String md5(String string) {
-        if (TextUtils.isEmpty(string)) {
-            return "";
-        }
-        MessageDigest md5 = null;
-        try {
-            md5 = MessageDigest.getInstance("MD5");
-            byte[] bytes = md5.digest(string.getBytes());
-            String result = "";
-            for (byte b : bytes) {
-                String temp = Integer.toHexString(b & 0xff);
-                if (temp.length() == 1) {
-                    temp = "0" + temp;
-                }
-                result += temp;
-            }
-            return result;
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return "";
     }
 
 }
