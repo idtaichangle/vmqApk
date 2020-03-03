@@ -387,5 +387,6 @@ public class MainActivity extends AppCompatActivity{
         //Toast.makeText(MainActivity.this, "已推送信息，如果权限，那么将会有下一条提示！", Toast.LENGTH_SHORT).show();
 
         mNotificationManager.notify(id++, mNotification);
+        Toast.makeText(MainActivity.this, "发送成功。", Toast.LENGTH_SHORT).show();
     }
 }
